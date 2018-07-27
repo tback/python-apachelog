@@ -159,7 +159,7 @@ class parser:
             elif findpercent.search(element):
                 subpattern = r'(\[[^\]]+\])'
                 
-            elif element == '%U':
+            elif element in ('%U', '%u'):
                 subpattern = '(.+?)'
             
             subpatterns.append(subpattern)
@@ -278,7 +278,7 @@ if __name__ == '__main__':
                           r'%b \"%{Referer}i\" \"%{User-Agent}i\"'
             self.fields = '%h %l %u %t %r %>s %b %{Referer}i '\
                           '%{User-Agent}i'.split(' ')
-            self.pattern = '^(\\S*) (\\S*) (\\S*) (\\[[^\\]]+\\]) '\
+            self.pattern = '^(\\S*) (\\S*) (.+?) (\\[[^\\]]+\\]) '\
                            '\\\"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)\\\" '\
                            '(\\S*) (\\S*) \\\"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)\\\" '\
                            '\\\"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)\\\"$'
@@ -299,6 +299,11 @@ if __name__ == '__main__':
                           r'bin/search?p=\"grady%20white%20306%20bimini\"" '\
                           r'"Mozilla/4.0 (compatible; MSIE 6.0; Windows 98; '\
                           r'YPC 3.0.3; yplus 4.0.00d)"'
+            self.line4  = r'1.1.1.1 - Some User [25/Jan/2009:15:48:07 +0000] '\
+                          r'"GET /10133748/cramfsswap_1.4.1.tar.gz HTTP/1.0" '\
+                          r'200 12341 "http://foo.bar/?baz=\"bang\"" '\
+                          r'"\"Nokia2630/2.0 (05.20) Profile/MIDP-2.1 '\
+                          r'Configuration/CLDC-1.1\""'
             self.p = parser(self.format)
 
         def testpattern(self):
@@ -392,6 +397,34 @@ if __name__ == '__main__':
                 msg = 'Line 3 %{User-Agent}i'
                 )
 
+        def testline4(self):
+            data = self.p.parse(self.line4)
+            self.assertEqual(data['%h'], '1.1.1.1', msg = 'Line 4 %h')
+            self.assertEqual(data['%l'], '-', msg = 'Line 4 %l')
+            self.assertEqual(data['%u'], 'Some User', msg = 'Line 4 %u')
+            self.assertEqual(
+                data['%t'],
+                '[25/Jan/2009:15:48:07 +0000]',
+                msg = 'Line 4 %t'
+                )
+            self.assertEqual(
+                data['%r'],
+                r'GET /10133748/cramfsswap_1.4.1.tar.gz HTTP/1.0',
+                msg = 'Line 4 %r'
+                )
+            self.assertEqual(data['%>s'], '200', msg = 'Line 4 %>s')
+            self.assertEqual(data['%b'], '12341', msg = 'Line 4 %b')
+            self.assertEqual(
+                data['%{Referer}i'],
+                r'http://foo.bar/?baz=\"bang\"',
+                msg = 'Line 4 %{Referer}i'
+                )
+            self.assertEqual(
+                data['%{User-Agent}i'],
+                r'\"Nokia2630/2.0 (05.20) Profile/MIDP-2.1 '\
+                r'Configuration/CLDC-1.1\"',
+                msg = 'Line 4 %{User-Agent}i'
+                )
 
         def testjunkline(self):
             self.assertRaises(ApacheLogParserError,self.p.parse,'foobar')
